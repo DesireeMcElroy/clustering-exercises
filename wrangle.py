@@ -45,6 +45,90 @@ def get_zillow():
     return pd.read_sql(sql_query, get_connection('zillow'))
 
 
+def get_info(df):
+    '''
+    This function takes in a dataframe and prints out information about the dataframe.
+    '''
+
+    print(df.info())
+    print()
+    print('------------------------')
+    print()
+    print('This dataframe has', df.shape[0], 'rows and', df.shape[1], 'columns.')
+    print()
+    print('------------------------')
+    print()
+    print('Null count in dataframe:')
+    print('------------------------')
+    print(df.isnull().sum())
+    print()
+    print('------------------------')
+    print(' Dataframe sample:')
+    print()
+    return df.sample(3)
+
+
+def value_counts(df, column):
+    '''
+    This function takes in a dataframe and list of columns and prints value counts for each column.
+    '''
+    for col in column:
+        print(col)
+        print(df[col].value_counts())
+        print('-------------')
+
+
+def visualize_numerals(df, column):
+    '''
+    This function takes in a dataframe and columns and creates a histogram with each column
+    '''
+    for col in column:
+        plt.hist(df[col])
+        plt.title(f"{col} distribution")
+        plt.show()
+
+
+
+def show_nulls(df):
+    '''
+    take in a dataframe 
+    return a dataframe with each cloumn name as a row 
+    each row will show the number and percent of nulls in the column
+    
+    '''
+    
+    # get columns paired with the number of nulls in that column
+    num_missing = df.isnull().sum()
+    
+    # get percent of nulls in each column
+    pct_missing = df.isnull().sum()/df.shape[0]
+    
+    # create/return dataframe
+    return pd.DataFrame({'num_rows_missing': num_missing, 'pct_rows_missing': pct_missing})
+
+
+def nulls_by_row(df):
+    '''take in a dataframe 
+       get count of missing columns per row
+       percent of missing columns per row 
+       and number of rows missing the same number of columns
+       in a dataframe'''
+    
+    num_cols_missing = df.isnull().sum(axis=1) # number of columns that are missing in each row
+    
+    pct_cols_missing = df.isnull().sum(axis=1)/df.shape[1]*100  # percent of columns missing in each row 
+    
+    # create a dataframe for the series and reset the index creating an index column
+    # group by count of both columns, turns index column into a count of matching rows
+    # change the index name and reset the index
+    
+    return (pd.DataFrame({'num_cols_missing': num_cols_missing, 'pct_cols_missing': pct_cols_missing}).reset_index()
+            .groupby(['num_cols_missing','pct_cols_missing']).count()
+            .rename(index=str, columns={'index': 'num_rows'}).reset_index())
+
+
+
+
 
 def split_data(df):
     '''
