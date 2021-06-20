@@ -3,6 +3,7 @@ import numpy as np
 
 import env
 
+from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 
@@ -88,7 +89,6 @@ def visualize_numerals(df, column):
         plt.show()
 
 
-
 def show_nulls(df):
     '''
     take in a dataframe 
@@ -128,6 +128,86 @@ def nulls_by_row(df):
 
 
 
+def show_outliers(df, k, columns):
+    '''
+    calculates the lower and upper bound to locate outliers and displays them
+    recommended k be 1.5 and entered as integer
+    '''
+    for i in columns:
+        quartile1, quartile3 = np.percentile(df[i], [25,75])
+        IQR_value = quartile3 - quartile1
+        lower_bound = (quartile1 - (k * IQR_value))
+        upper_bound = (quartile3 + (k * IQR_value))
+        print(f'For {i} the lower bound is {lower_bound} and  upper bound is {upper_bound}')
+    
+    return df
+
+
+
+def remove_outliers(df, k, columns):
+    '''
+    calculates the lower and upper bound to locate outliers in variables and then removes them.
+    recommended k be 1.5 and entered as integer
+    '''
+    for i in columns:
+        quartile1, quartile3 = np.percentile(df[i], [25,75])
+        IQR_value = quartile3 - quartile1
+        lower_bound = (quartile1 - (k * IQR_value))
+        upper_bound = (quartile3 + (k * IQR_value))
+        print(f'For {i} the lower bound is {lower_bound} and  upper bound is {upper_bound}')
+    
+    
+        df = df[(df[i] <= upper_bound) & (df[i] >= lower_bound)]
+        
+    return df
+
+
+def handle_missing_values(df, prop_required_column = .5, prop_required_row = .5):
+    ''' 
+    take in a dataframe and a proportion for columns and rows
+    return dataframe with columns and rows not meeting proportions dropped
+    equate prop_required_column/prop_required_row to a percentage
+    For Example:
+    .5 for 50% of filled in data.
+    Ex:
+    handle_missing_values(df, .5, .5)
+    '''
+    col_thresh = int(round(prop_required_column*df.shape[0],0)) # calc column threshold
+    
+    df.dropna(axis=1, thresh=col_thresh, inplace=True) # drop columns with non-nulls less than threshold
+    
+    row_thresh = int(round(prop_required_row*df.shape[1],0))  # calc row threshhold
+    
+    df.dropna(axis=0, thresh=row_thresh, inplace=True) # drop columns with non-nulls less than threshold
+    
+    return df
+
+
+def prepare_zillow(df):
+    ''' Prepare Zillow Data
+    '''
+    # Restrict propertylandusedesc to those of single unit
+    df = df[(df.propertylandusedesc == 'Single Family Residential') |
+          (df.propertylandusedesc == 'Mobile Home') |
+          (df.propertylandusedesc == 'Manufactured, Modular, Prefabricated Homes') |
+          (df.propertylandusedesc == 'Townhouse')]
+    
+    # remove outliers in bed count, bath count, and area to better target single unit properties
+    df = remove_outliers(df, 1.5, ['calculatedfinishedsquarefeet', 'bedroomcnt', 'bathroomcnt'])
+    
+    # dropping cols/rows where more than half of the values are null
+    df = handle_missing_values(df, prop_required_column = .5, prop_required_row = .5)
+    
+    # dropping the columns with 17K missing values too much to fill/impute/drop rows
+    df = df.drop(columns=['heatingorsystemtypeid', 'buildingqualitytypeid', 'propertyzoningdesc', 'unitcnt', 'heatingorsystemdesc'])
+    
+    # imputing discrete columns with most frequent value
+    df = impute(df, 'most_frequent', ['calculatedbathnbr', 'fullbathcnt', 'regionidcity', 'regionidzip', 'yearbuilt', 'censustractandblock'])
+    
+    # imputing continuous columns with median value
+    df = impute(df, 'median', ['finishedsquarefeet12', 'lotsizesquarefeet', 'structuretaxvaluedollarcnt', 'taxvaluedollarcnt', 'landtaxvaluedollarcnt', 'taxamount'])
+    
+    return df
 
 
 def split_data(df):
@@ -145,3 +225,16 @@ def split_data(df):
     print('validate--->', validate.shape)
     print('test--->', test.shape)
     return train, validate, test
+
+
+
+def impute(df, strategy_method, column_list):
+    ''' take in a df, strategy, and cloumn list
+        return df with listed columns imputed using input stratagy
+    '''
+        
+    imputer = SimpleImputer(strategy=strategy_method)  # build imputer
+
+    df[column_list] = imputer.fit_transform(df[column_list]) # fit/transform selected columns
+
+    return df
