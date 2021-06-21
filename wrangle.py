@@ -210,6 +210,7 @@ def prepare_zillow(df):
     return df
 
 
+
 def split_data(df):
     '''
     This function takes in a dataframe and splits it into train, test, and 
