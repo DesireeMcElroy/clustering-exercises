@@ -215,6 +215,7 @@ def split_data(df):
     '''
     This function takes in a dataframe and splits it into train, test, and 
     validate dataframes for my model
+    Do this only after you split to avoid data leakage
     '''
 
     train_validate, test = train_test_split(df, test_size=.2, 
